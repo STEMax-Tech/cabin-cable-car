@@ -1,67 +1,75 @@
+function doSomething (value: number, min: number, max: number, col: number) {
+    for (let index = 0; index <= Math.map(value, min, max, 0, 4); index++) {
+        led.plot(col, Math.map(value, min, max, 0, 4) - index)
+    }
+}
 let delayCount = 0
 let isRunning = false
-let isLight = true
 let isForward = true
-let speed = 50
+let speed = 100
+let lightThreshold = 100
+basic.showLeds(`
+    . . # . .
+    . # # # .
+    # # # # #
+    # # # # #
+    . # . # .
+    `)
+basic.pause(1000)
 basic.forever(function () {
     if (input.buttonIsPressed(Button.B)) {
         isRunning = true
     }
     if (input.buttonIsPressed(Button.A)) {
-        speed += 10
-        if (speed > 100) {
-            speed = 30
+        lightThreshold += 10
+        if (lightThreshold > 200) {
+            lightThreshold = 50
+            basic.clearScreen()
         }
         basic.pause(200)
     }
 })
 basic.forever(function () {
     if (isRunning) {
-        if (input.lightLevel() <= 0) {
-            while (input.lightLevel() <= 0) {
+        if (pins.analogReadPin(AnalogReadWritePin.P2) <= lightThreshold) {
+            while (pins.analogReadPin(AnalogReadWritePin.P2) <= lightThreshold) {
                 delayCount += 1
                 serial.writeNumbers([delayCount])
-                if (delayCount == 20) {
+                if (delayCount == 40) {
                     isForward = !(isForward)
                     isRunning = false
+                    basic.clearScreen()
                     serial.writeLine("" + isRunning + "     " + isForward)
                     serial.writeNumbers([delayCount])
-                } else if (delayCount > 20) {
+                } else if (delayCount > 40) {
                     break;
                 }
-                basic.pause(100)
+                basic.pause(50)
             }
             delayCount = 0
         }
     }
+    serial.writeNumbers([lightThreshold])
 })
 basic.forever(function () {
     if (isRunning) {
         if (isForward) {
             ContinuousServo.spin_one_way_with_speed(AnalogPin.P0, speed)
             ContinuousServo.spin_one_way_with_speed(AnalogPin.P1, speed)
-            basic.showLeds(`
-                . . # . .
-                . # . . .
-                # # # # #
-                . # . . .
-                . . # . .
-                `)
+            basic.showArrow(ArrowNames.West)
         } else {
             ContinuousServo.spin_other_way_with_speed(AnalogPin.P0, speed)
             ContinuousServo.spin_other_way_with_speed(AnalogPin.P1, speed)
-            basic.showLeds(`
-                . . # . .
-                . . . # .
-                # # # # #
-                . . . # .
-                . . # . .
-                `)
+            basic.showArrow(ArrowNames.East)
         }
     } else {
         ContinuousServo.turn_off_motor(DigitalPin.P0)
         ContinuousServo.turn_off_motor(DigitalPin.P1)
-        basic.showIcon(IconNames.Diamond)
-        basic.showIcon(IconNames.SmallDiamond)
+        doSomething(lightThreshold, 60, 100, 3)
+        doSomething(lightThreshold, 110, 150, 2)
+        doSomething(lightThreshold, 160, 200, 1)
+        basic.pause(250)
+        basic.clearScreen()
+        basic.pause(250)
     }
 })
